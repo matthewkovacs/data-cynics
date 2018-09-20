@@ -1,0 +1,59 @@
+.line {
+  fill: none;
+  stroke: #D32F2F;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.background {
+  fill: none;
+  pointer-events: all;
+}
+
+.label-bg {
+  pointer-events: none;
+  text-anchor: middle;
+  fill: none;
+  stroke: white;
+  font-size: 0.2rem;
+  stroke-width: 0.03rem;
+  opacity: 0.9;
+}
+
+.community-label {
+  pointer-events: none;
+  text-anchor: middle;
+  font-size: 0.2rem;
+  text-shadow: 0 0 3px #fff;
+  fill: rgb(70, 70, 70);
+}
+
+
+
+#linegraph {
+  position: absolute;
+  top: 5%;
+  left: 40px;
+  max-width: 50%;
+}
+
+#yearDropdown {
+  position: absolute;
+  top: 570px;
+  left: 77px;
+  max-width: 6%;
+  font-family: Roboto;
+}
+
+#map{
+  position: absolute;
+  left: 720px;
+}
+
+#legend{
+  position: absolute;
+  top: 600px;
+  left: 760px;
+  font-family: Roboto;
+}
