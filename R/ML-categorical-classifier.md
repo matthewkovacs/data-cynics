@@ -5,12 +5,13 @@ This notebook will provide a detailed example of how what a traditional machine 
 
 For practice, we will fit a classifier to predict the probability of loan default for a bank's customers. We will use the `wakefield` package to generate this dataset that we will fit multiple classifiers to and evaluate which model is the best.
 
-1. Create Dataset
------------------
+0. Setup
+--------
 
 First we need to import the packages that we will use throughout this notebook.
 
 ``` r
+library(doParallel)
 library(wakefield)
 library(dplyr)
 library(DataExplorer)
@@ -20,6 +21,21 @@ library(gencve)
 library(fastAdaboost)
 library(ggplot2)
 ```
+
+``` r
+set.seed(169)
+```
+
+This notebook will utilize parallel processing to train the models simultaneously during cross-validation. In order to have access to additional CPU cores we need to initiliaze them here.
+
+``` r
+# Initialize 8 CPU threads for computing later
+thread_cluster <- makePSOCKcluster(8)
+registerDoParallel(thread_cluster)
+```
+
+1. Create Dataset
+-----------------
 
 We will generate a dataset and set roughly 20% of the data to missing. This is done to simulate a real life dataset, as they are rarely ever complete. Datasets with missing values are a reality that every data scientist must deal with.
 
@@ -53,7 +69,7 @@ We should check our data for missing values.
 plot_missing(raw_data)
 ```
 
-![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-4-1.png)
+![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-6-1.png)
 
 Just as we had asked, 20% of each feature is missing from our data. This then justifies the need for data imputation as a cleaning step within our pipeline.
 
@@ -88,7 +104,7 @@ A quick check to ensure that MICE cleaned our missing values by imputing them:
 plot_missing(imputed_data)
 ```
 
-![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-6-1.png)
+![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-8-1.png)
 
 Success never felt so good.
 
@@ -124,7 +140,7 @@ imputed_data <- imputed_data %>%
 plot_bar(imputed_data)
 ```
 
-![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-9-1.png)
 
 Our dependent variable `default_occurred` appears to be balanced between the two values. Therefore, we won't need to oversample this feature as a pre-processing step.
 
@@ -133,7 +149,7 @@ Our dependent variable `default_occurred` appears to be balanced between the two
 plot_histogram(imputed_data)
 ```
 
-![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-8-1.png)
+![](ML-categorical-classifier_files/figure-markdown_github/unnamed-chunk-10-1.png)
 
 Most of these curves appear to be either normal or logistic distributions.
 
@@ -188,7 +204,7 @@ logistic_logloss <- logloss(test_data$default_occurred, logistic_predict)
 print(logistic_logloss)
 ```
 
-    ## [1] 67.75142
+    ## [1] 62.69457
 
 The logloss number can be used to benchmark the efficacy of one model against another, similar to how the mean squared error value is used to pick the best model.
 
@@ -202,25 +218,25 @@ confusionMatrix(table(logistic_predict, test_data$default_occurred))
     ## 
     ##                 
     ## logistic_predict no yes
-    ##              no  29  27
-    ##              yes 23  20
+    ##              no  18  15
+    ##              yes 28  39
     ##                                           
-    ##                Accuracy : 0.4949          
-    ##                  95% CI : (0.3929, 0.5973)
-    ##     No Information Rate : 0.5253          
-    ##     P-Value [Acc > NIR] : 0.7596          
+    ##                Accuracy : 0.57            
+    ##                  95% CI : (0.4671, 0.6686)
+    ##     No Information Rate : 0.54            
+    ##     P-Value [Acc > NIR] : 0.30879         
     ##                                           
-    ##                   Kappa : -0.0168         
-    ##  Mcnemar's Test P-Value : 0.6714          
+    ##                   Kappa : 0.116           
+    ##  Mcnemar's Test P-Value : 0.06725         
     ##                                           
-    ##             Sensitivity : 0.5577          
-    ##             Specificity : 0.4255          
-    ##          Pos Pred Value : 0.5179          
-    ##          Neg Pred Value : 0.4651          
-    ##              Prevalence : 0.5253          
-    ##          Detection Rate : 0.2929          
-    ##    Detection Prevalence : 0.5657          
-    ##       Balanced Accuracy : 0.4916          
+    ##             Sensitivity : 0.3913          
+    ##             Specificity : 0.7222          
+    ##          Pos Pred Value : 0.5455          
+    ##          Neg Pred Value : 0.5821          
+    ##              Prevalence : 0.4600          
+    ##          Detection Rate : 0.1800          
+    ##    Detection Prevalence : 0.3300          
+    ##       Balanced Accuracy : 0.5568          
     ##                                           
     ##        'Positive' Class : no              
     ## 
@@ -268,7 +284,7 @@ adaboost_fit$bestTune
 ```
 
     ##   nIter   method
-    ## 2     6 adaboost
+    ## 3    10 adaboost
 
 ``` r
 adaboost_predict <- predict(adaboost_fit, newdata=test_data)
@@ -277,7 +293,7 @@ rf_logloss <-logloss(test_data$default_occurred, adaboost_predict)
 print(rf_logloss)
 ```
 
-    ## [1] 67.94435
+    ## [1] 69.23418
 
 The performance of the ensemble method was not as strong as we would have hoped for. The additional computation cost of this model doesn't seem to be worth the margin improvement in decreased log loss error.
 
@@ -313,9 +329,9 @@ bayes_logloss <-logloss(test_data$default_occurred, bayes_predict)
 print(bayes_logloss)
 ```
 
-    ## [1] 66.61769
+    ## [1] 64.82212
 
-The naive Bayes algorithm was able to edge out the other models. It is the most accurate classifier out of the bunch so we will elect to use it to predict the probabilities of a bank customer default on their loan.
+The logistic regression algorithm was able to edge out the other models. It is the most accurate classifier out of the bunch so we will elect to use it to predict the probabilities of a bank customer default on their loan.
 
 ### 5. Report Probabilities of Loan Default
 
@@ -323,7 +339,7 @@ For each customer within our test dataset we will use our most accurate model to
 
 ``` r
 # Predict the probability that default = yes for each observation
-probabilities_vector <- predict(bayes_fit, 
+probabilities_vector <- predict(logistic_fit, 
                              test_data,
                              type = 'prob')
 
@@ -331,8 +347,8 @@ probabilities_vector <- predict(bayes_fit,
 print(probabilities_vector$yes[1:10])
 ```
 
-    ##  [1] 0.4515728 0.2711351 0.6026572 0.3641748 0.4198962 0.4210829 0.4388732
-    ##  [8] 0.4312135 0.4031854 0.4645055
+    ##  [1] 0.5848585 0.6431756 0.7093000 0.5150227 0.6302856 0.6166925 0.6889638
+    ##  [8] 0.5434809 0.5998381 0.2759084
 
 This is an example of the task that you would wish your deployed model to continually report to some line of business you're supporting internally. The model would be trained continually or on a batch basis and would report the probabilities of customers defaulting on their loans. These predictions could then be used to assess the risk involved with loans to make better business decisions.
 

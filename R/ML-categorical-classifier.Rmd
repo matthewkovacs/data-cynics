@@ -8,11 +8,12 @@ This notebook will provide a detailed example of how what a traditional machine 
 For practice, we will fit a classifier to predict the probability of loan default for a bank's customers.  We will use the `wakefield` package to generate this dataset that we will fit multiple classifiers to and evaluate which model is the best.
 
 
-## 1. Create Dataset
+## 0. Setup
 
 First we need to import the packages that we will use throughout this notebook.
 
 ```{r results = 'hide', include = FALSE}
+library(doParallel)
 library(wakefield)
 library(dplyr)
 library(DataExplorer)
@@ -24,6 +25,7 @@ library(ggplot2)
 ```
 
 ```{r eval=FALSE}
+library(doParallel)
 library(wakefield)
 library(dplyr)
 library(DataExplorer)
@@ -34,6 +36,22 @@ library(fastAdaboost)
 library(ggplot2)
 ```
 
+
+```{r}
+set.seed(169)
+```
+
+
+This notebook will utilize parallel processing to train the models simultaneously during cross-validation.  In order to have access to additional CPU cores we need to initiliaze them here.
+
+```{r}
+# Initialize 8 CPU threads for computing later
+thread_cluster <- makePSOCKcluster(8)
+registerDoParallel(thread_cluster)
+```
+
+
+## 1. Create Dataset
 
 We will generate a dataset and set roughly 20% of the data to missing.  This is done to simulate a real life dataset, as they are rarely ever complete.  Datasets with missing values are a reality that every data scientist must deal with.
 
@@ -284,7 +302,7 @@ bayes_logloss <-logloss(test_data$default_occurred, bayes_predict)
 print(bayes_logloss)
 ```
 
-The naive Bayes algorithm was able to edge out the other models.  It is the most accurate classifier out of the bunch so we will elect to use it to predict the probabilities of a bank customer default on their loan.
+The logistic regression algorithm was able to edge out the other models.  It is the most accurate classifier out of the bunch so we will elect to use it to predict the probabilities of a bank customer default on their loan.
 
 ### 5. Report Probabilities of Loan Default
 
@@ -292,7 +310,7 @@ For each customer within our test dataset we will use our most accurate model to
 
 ```{r}
 # Predict the probability that default = yes for each observation
-probabilities_vector <- predict(bayes_fit, 
+probabilities_vector <- predict(logistic_fit, 
                              test_data,
                              type = 'prob')
 
